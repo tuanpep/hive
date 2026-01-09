@@ -37,31 +37,33 @@ HIVE features a state-of-the-art Terminal UI providing real-time log streaming f
 
 ## 🛠️ Installation
 
+### ⚡ One-Line Install (Recommended)
+Install the latest `hive` binary directly to your path (Linux/macOS):
+
 ```bash
-# Clone the repository
+curl -sL https://raw.githubusercontent.com/tuanbt/hive/main/install.sh | bash
+```
+
+### 📦 Manual Build
+If you prefer building from source:
+
+```bash
 git clone https://github.com/tuanbt/hive.git
 cd hive
-
-# Build the binaries
-make build       # Build Orchestrator
-make build-hive  # Build Hacker TUI
+make build-all
 ```
 
 ## 🚥 Quick Start
 
-1. **Configure your agent** in `config.json` (e.g., set `agent_command` to your preferred AI driver).
-2. **Start the Engine**:
+1. **Configure your agent** in `config.json` (ensure `agent_command` is correct).
+2. **Start the Swarm**:
    ```bash
-   ./hive
+   hive
    ```
-3. **Launch the TUI**:
-   ```bash
-   ./hive
-   ```
-4. **Add a task**:
+3. **Add a task**:
    In a new terminal or via the Hive TUI (Insert Mode `i`):
    ```bash
-   ./hive add -title "Build a JWT Auth API" -role "backend"
+   hive add -title "Build a JWT Auth API" -role "backend"
    ```
 
 ## 🧩 How it Works: The Swarm Logic
