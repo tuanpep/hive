@@ -228,32 +228,47 @@ func handleRetry(tm *task.Manager, args []string) {
 }
 
 func runTUI(cfg *config.Config, tm *task.Manager) {
-	// 1. Setup Embedded Orchestrator
-	log, err := logger.NewEmbeddedLogger(cfg)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating logger: %v\n", err)
-		os.Exit(1)
-	}
+	// Try to acquire lock to become the "Leader" (Orchestrator Node)
+	// If lock exists, we run in "Client Mode" (TUI only)
+	lockFile := filepath.Join(filepath.Dir(cfg.TasksFile), "hive.lock")
 
-	gitClient := git.NewClient(cfg.WorkDirectory)
+	f, err := os.OpenFile(lockFile, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+	isLeader := (err == nil)
 
-	orch, err := orchestrator.New(cfg, log, gitClient, tm)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating orchestrator: %v\n", err)
-		os.Exit(1)
-	}
+	if isLeader {
+		// We are the leader
+		fmt.Fprintf(f, "%d", os.Getpid())
+		f.Close()
 
-	// Run Orchestrator in background
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+		defer os.Remove(lockFile)
 
-	go func() {
-		if err := orch.Run(ctx); err != nil && err != context.Canceled {
-			log.Error("orchestrator stopped with error", "error", err)
+		// 1. Setup Embedded Orchestrator
+		log, err := logger.NewEmbeddedLogger(cfg)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating logger: %v\n", err)
+			os.Exit(1)
 		}
-	}()
 
-	// 2. Run TUI
+		gitClient := git.NewClient(cfg.WorkDirectory)
+
+		orch, err := orchestrator.New(cfg, log, gitClient, tm)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating orchestrator: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Run Orchestrator in background
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		go func() {
+			if err := orch.Run(ctx); err != nil && err != context.Canceled {
+				log.Error("orchestrator stopped with error", "error", err)
+			}
+		}()
+	}
+
+	// 2. Run TUI (Both Leader and Client run the UI)
 	model := initialModel(cfg, tm)
 
 	p := tea.NewProgram(model, tea.WithAltScreen())
