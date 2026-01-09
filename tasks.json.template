@@ -1,0 +1,18 @@
+[
+  {
+    "id": "example-001",
+    "title": "Example Backend Task",
+    "description": "Create a user authentication API using JWT.",
+    "role": "backend",
+    "status": "pending",
+    "priority": 10
+  },
+  {
+    "id": "example-002",
+    "title": "Example Frontend Task",
+    "description": "Implement the login form with validation using React Hook Form.",
+    "role": "frontend",
+    "status": "pending",
+    "priority": 10
+  }
+]

@@ -1,0 +1,32 @@
+# Binaries
+agent-orchestrator
+agent-orchestrator-*
+hive
+hive-*
+*.exe
+
+# Logs & Data
+logs/
+tasks.json
+hello_world/
+
+# Temporary files
+*.tmp
+*.temp
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage.out
+coverage.html
+
+# Documentation / Process
+plan/
+**/_cortex_backup_**
