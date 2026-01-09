@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
+	"github.com/tuanbt/hive/internal/task"
 )
 
 type tickMsg time.Time
@@ -28,9 +29,10 @@ const (
 
 type Model struct {
 	// State sources
-	ConfigPath string
-	TasksFile  string
-	LogDir     string
+	ConfigPath  string
+	TasksFile   string
+	LogDir      string
+	TaskManager *task.Manager
 
 	// Models
 	TaskList    list.Model

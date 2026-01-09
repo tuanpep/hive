@@ -37,6 +37,30 @@ func NewSystemLogger(cfg *config.Config) (*slog.Logger, error) {
 	return slog.New(handler), nil
 }
 
+// NewEmbeddedLogger creates a logger that ONLY writes to file (for TUI embedding).
+func NewEmbeddedLogger(cfg *config.Config) (*slog.Logger, error) {
+	level := ParseLevel(cfg.LogLevel)
+
+	// Ensure log directory exists
+	if err := os.MkdirAll(cfg.LogDirectory, 0755); err != nil {
+		return nil, err
+	}
+
+	// Create log file
+	logPath := filepath.Join(cfg.LogDirectory, "orchestrator.log")
+	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+
+	// File ONLY, no stdout
+	handler := slog.NewJSONHandler(file, &slog.HandlerOptions{
+		Level: level,
+	})
+
+	return slog.New(handler), nil
+}
+
 // NewTaskLogger creates a logger for a specific task.
 // Returns the logger and a cleanup function to close the file.
 func NewTaskLogger(cfg *config.Config, taskID string) (*slog.Logger, func(), error) {

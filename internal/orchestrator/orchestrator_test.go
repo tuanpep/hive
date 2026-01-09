@@ -103,7 +103,7 @@ func TestNew(t *testing.T) {
 	cfg, _ := setupTest(t)
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 
-	o, err := orchestrator.New(cfg, logger, &MockGitClient{})
+	o, err := orchestrator.New(cfg, logger, &MockGitClient{}, task.NewManager(cfg.TasksFile))
 	if err != nil {
 		t.Fatalf("New() failed: %v", err)
 	}
@@ -116,7 +116,7 @@ func TestRun_Lifecycle(t *testing.T) {
 	cfg, _ := setupTest(t)
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	o, err := orchestrator.New(cfg, logger, &MockGitClient{})
+	o, err := orchestrator.New(cfg, logger, &MockGitClient{}, task.NewManager(cfg.TasksFile))
 	if err != nil {
 		t.Fatalf("New() failed: %v", err)
 	}
@@ -168,7 +168,7 @@ func TestRun_TaskProcessing(t *testing.T) {
 	data, _ := json.Marshal(tasks)
 	os.WriteFile(tasksPath, data, 0644)
 
-	o, err := orchestrator.New(cfg, logger, &MockGitClient{})
+	o, err := orchestrator.New(cfg, logger, &MockGitClient{}, task.NewManager(tasksPath))
 	if err != nil {
 		t.Fatalf("New() failed: %v", err)
 	}
@@ -219,7 +219,7 @@ func TestRecoverInProgressOnStartup(t *testing.T) {
 	data, _ := json.Marshal([]task.Task{stuckTask})
 	os.WriteFile(tasksPath, data, 0644)
 
-	o, err := orchestrator.New(cfg, logger, &MockGitClient{})
+	o, err := orchestrator.New(cfg, logger, &MockGitClient{}, task.NewManager(tasksPath))
 	if err != nil {
 		t.Fatalf("New() failed: %v", err)
 	}
@@ -284,7 +284,7 @@ func TestGitIntegration(t *testing.T) {
 	data, _ := json.Marshal([]task.Task{testTask})
 	os.WriteFile(tasksPath, data, 0644)
 
-	o, err := orchestrator.New(cfg, logger, mockGit)
+	o, err := orchestrator.New(cfg, logger, mockGit, task.NewManager(tasksPath))
 	if err != nil {
 		t.Fatalf("New() failed: %v", err)
 	}

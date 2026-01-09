@@ -1,0 +1,18 @@
+=== SYSTEM INSTRUCTIONS ===
+=== TASK ===
+Task: Test Task
+Description: Do something
+Please implement this now. When you are finished, output '### TASK_DONE ###'.
+Review the implementation:
+1. Run any tests if possible
+2. Fix any syntax errors
+3. If everything is correct, say '### TASK_DONE ###'
+=== SYSTEM INSTRUCTIONS ===
+=== TASK ===
+Task: Test Task
+Description: Do something
+Please implement this now. When you are finished, output '### TASK_DONE ###'.
+Review the implementation:
+1. Run any tests if possible
+2. Fix any syntax errors
+3. If everything is correct, say '### TASK_DONE ###'

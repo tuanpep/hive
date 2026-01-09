@@ -12,6 +12,7 @@ import (
 	"github.com/tuanbt/hive/internal/git"
 	"github.com/tuanbt/hive/internal/logger"
 	"github.com/tuanbt/hive/internal/orchestrator"
+	"github.com/tuanbt/hive/internal/task"
 )
 
 var (
@@ -59,8 +60,11 @@ func main() {
 	// Create git client
 	gitClient := git.NewClient(cfg.WorkDirectory)
 
+	// Create task manager
+	taskMgr := task.NewManager(cfg.TasksFile)
+
 	// Create orchestrator
-	orch, err := orchestrator.New(cfg, log, gitClient)
+	orch, err := orchestrator.New(cfg, log, gitClient, taskMgr)
 	if err != nil {
 		log.Error("failed to create orchestrator", "error", err)
 		os.Exit(1)

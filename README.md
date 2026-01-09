@@ -47,21 +47,17 @@ make build-all
 
 ## 🚀 Quick Start
 
-1.  **Start the Backend** (in a new tab/window):
-    ```bash
-    hive-core
-    ```
-
-2.  **Start the TUI**:
+1.  **Start the Swarm**:
     ```bash
     hive
     ```
+    *(The orchestrator runs automatically in the background)*
 
-3.  **Command the Swarm**:
+2.  **Command the Agents**:
     - Press `i` to enter Insert Mode.
     - Type `Create a new task for the swarm`.
     - Press `Enter` to submit.
-    - Watch the agents pick it up in the grid!
+    - Watch the **Dynamic Grid** light up as agents pick up tasks!
 
 ## 🧩 How it Works: The Swarm Logic
 

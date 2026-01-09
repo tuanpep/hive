@@ -45,7 +45,7 @@ func TestAutoPlanning(t *testing.T) {
 	os.WriteFile(tasksPath, data, 0644)
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	o, err := orchestrator.New(cfg, logger, &MockGitClient{})
+	o, err := orchestrator.New(cfg, logger, &MockGitClient{}, task.NewManager(tasksPath))
 	if err != nil {
 		t.Fatalf("New() failed: %v", err)
 	}

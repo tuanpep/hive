@@ -30,8 +30,9 @@ type Orchestrator struct {
 
 // New initializes a new Orchestrator instance with the provided dependencies.
 // It ensures the task registry file exists before returning.
-func New(cfg *config.Config, logger *slog.Logger, gitClient git.Client) (*Orchestrator, error) {
-	taskMgr := task.NewManager(cfg.TasksFile)
+// New initializes a new Orchestrator instance with the provided dependencies.
+// It ensures the task registry file exists before returning.
+func New(cfg *config.Config, logger *slog.Logger, gitClient git.Client, taskMgr *task.Manager) (*Orchestrator, error) {
 	if err := taskMgr.EnsureFile(); err != nil {
 		return nil, err
 	}

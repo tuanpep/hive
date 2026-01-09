@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,16 +10,11 @@ import (
 	"github.com/tuanbt/hive/internal/task"
 )
 
-// LoadTasks reads tasks from the tasks.json file and converts them to list items
+// LoadTasks reads tasks from the tasks.json file via TaskManager
 func (m *Model) LoadTasks() []list.Item {
-	data, err := os.ReadFile(m.TasksFile)
+	tasks, err := m.TaskManager.LoadAll()
 	if err != nil {
-		return []list.Item{} // Return empty on error
-	}
-
-	var tasks []task.Task
-	if err := json.Unmarshal(data, &tasks); err != nil {
-		return []list.Item{}
+		return []list.Item{} // Return empty on error or log it via some debug channel?
 	}
 
 	items := make([]list.Item, len(tasks))
@@ -56,18 +50,13 @@ func (m *Model) LoadTasks() []list.Item {
 
 // AddTask appends a new task to the file
 func (m *Model) AddTask(title string) error {
-	mgr := task.NewManager(m.TasksFile)
-	if err := mgr.EnsureFile(); err != nil {
-		return err
-	}
-
 	t := task.NewTask(
 		fmt.Sprintf("task-%d", time.Now().UnixNano()),
 		title,
 		title,
 	)
 
-	return mgr.AddTask(t)
+	return m.TaskManager.AddTask(t)
 }
 
 // ReadLogs reads the log file for the selected task
@@ -84,11 +73,13 @@ func (m *Model) ReadLogs(taskID string) string {
 		}
 		return fmt.Sprintf("Error reading logs: %v", err)
 	}
+	if len(content) == 0 {
+		return "Log file empty..."
+	}
 	return string(content)
 }
 
 // DeleteTask removes a task from the file
 func (m *Model) DeleteTask(taskID string) error {
-	mgr := task.NewManager(m.TasksFile)
-	return mgr.DeleteTask(taskID)
+	return m.TaskManager.DeleteTask(taskID)
 }

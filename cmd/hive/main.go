@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -14,6 +15,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/tuanbt/hive/cmd/hive/tui"
 	"github.com/tuanbt/hive/internal/config"
+	"github.com/tuanbt/hive/internal/git"
+	"github.com/tuanbt/hive/internal/logger"
+	"github.com/tuanbt/hive/internal/orchestrator"
 	"github.com/tuanbt/hive/internal/task"
 )
 
@@ -74,7 +78,7 @@ func main() {
 
 	switch cmd {
 	case "tui":
-		runTUI(cfg)
+		runTUI(cfg, tm)
 	case "list":
 		handleList(tm)
 	case "add":
@@ -223,8 +227,34 @@ func handleRetry(tm *task.Manager, args []string) {
 	fmt.Printf("Task %s reset for retry\n", id)
 }
 
-func runTUI(cfg *config.Config) {
-	model := initialModel(cfg)
+func runTUI(cfg *config.Config, tm *task.Manager) {
+	// 1. Setup Embedded Orchestrator
+	log, err := logger.NewEmbeddedLogger(cfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating logger: %v\n", err)
+		os.Exit(1)
+	}
+
+	gitClient := git.NewClient(cfg.WorkDirectory)
+
+	orch, err := orchestrator.New(cfg, log, gitClient, tm)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating orchestrator: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Run Orchestrator in background
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		if err := orch.Run(ctx); err != nil && err != context.Canceled {
+			log.Error("orchestrator stopped with error", "error", err)
+		}
+	}()
+
+	// 2. Run TUI
+	model := initialModel(cfg, tm)
 
 	p := tea.NewProgram(model, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
@@ -233,7 +263,7 @@ func runTUI(cfg *config.Config) {
 	}
 }
 
-func initialModel(cfg *config.Config) tui.Model {
+func initialModel(cfg *config.Config, tm *task.Manager) tui.Model {
 	// Task List (Compact Hacker Style)
 	l := list.New([]list.Item{}, tui.TaskDelegate{}, 0, 0)
 	l.SetShowTitle(false)
@@ -270,6 +300,7 @@ func initialModel(cfg *config.Config) tui.Model {
 		ConfigPath:    "config.json",
 		TasksFile:     tasksFile,
 		LogDir:        logDir,
+		TaskManager:   tm,
 		TaskList:      l,
 		OrchView:      orchVp,
 		WorkerViews:   workerVps,

@@ -53,14 +53,11 @@ tar -xzf "$TMP_DIR/hive.tar.gz" -C "$TMP_DIR"
 echo "Installing to $INSTALL_DIR (requires sudo)..."
 if [ -w "$INSTALL_DIR" ]; then
     mv "$TMP_DIR/$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
-    mv "$TMP_DIR/hive-core" "$INSTALL_DIR/hive-core"
 else
     sudo mv "$TMP_DIR/$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
-    sudo mv "$TMP_DIR/hive-core" "$INSTALL_DIR/hive-core"
 fi
 
 chmod +x "$INSTALL_DIR/$BINARY_NAME"
-chmod +x "$INSTALL_DIR/hive-core"
 
 # Cleanup
 rm -rf "$TMP_DIR"
