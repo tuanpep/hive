@@ -16,6 +16,17 @@ builds:
     goarch:
       - amd64
       - arm64
+  - id: hive-core
+    main: ./cmd/orchestrator
+    binary: hive-core
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
 
 archives:
   - format: tar.gz
@@ -25,6 +36,7 @@ archives:
       {{- .Arch }}
     builds:
       - hive
+      - hive-core
 
 checksum:
   name_template: 'checksums.txt'

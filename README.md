@@ -29,7 +29,7 @@ HIVE is a lightweight **Go-based Autonomous Agent Orchestrator** designed for de
 ## 🛠️ Installation
 
 ### ⚡ One-Line Install (Recommended)
-Install the latest `hive` binary directly to your path (Linux/macOS):
+Install the latest `hive` binaries (`hive` and `hive-core`) directly to your path:
 
 ```bash
 curl -sL https://raw.githubusercontent.com/tuanpep/hive/main/install.sh | bash
@@ -42,20 +42,26 @@ If you prefer building from source:
 git clone https://github.com/tuanpep/hive.git
 cd hive
 make build-all
+# Binaries will be in ./dist/
 ```
 
-## 🚥 Quick Start
+## 🚀 Quick Start
 
-1. **Configure your agent** in `config.json` (ensure `agent_command` is correct).
-2. **Start the Swarm**:
-   ```bash
-   hive
-   ```
-3. **Add a task**:
-   In a new terminal or via the Hive TUI (Insert Mode `i`):
-   ```bash
-   hive add -title "Build a JWT Auth API" -role "backend"
-   ```
+1.  **Start the Backend** (in a new tab/window):
+    ```bash
+    hive-core
+    ```
+
+2.  **Start the TUI**:
+    ```bash
+    hive
+    ```
+
+3.  **Command the Swarm**:
+    - Press `i` to enter Insert Mode.
+    - Type `Create a new task for the swarm`.
+    - Press `Enter` to submit.
+    - Watch the agents pick it up in the grid!
 
 ## 🧩 How it Works: The Swarm Logic
 
