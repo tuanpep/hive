@@ -75,3 +75,30 @@ type TaskItem struct {
 func (i TaskItem) FilterValue() string       { return i.Title }
 func (t TaskItem) TitleString() string       { return t.Title }
 func (t TaskItem) DescriptionString() string { return t.Description }
+
+// GetActiveTasks returns a list of TaskItems that are currently running
+func (m Model) GetActiveTasks() []TaskItem {
+	var active []TaskItem
+	for _, item := range m.TaskList.Items() {
+		if t, ok := item.(TaskItem); ok {
+			// specific statuses that count as "Active" for view purposes
+			if t.Status == "in_progress" || t.Status == "reviewing" || t.Status == "pending" {
+				active = append(active, t)
+			}
+		}
+	}
+	return active
+}
+
+// GetRunningTasks returns tasks that specifically warrant a "Worker Window" (in_progress/reviewing)
+func (m Model) GetRunningTasks() []TaskItem {
+	var running []TaskItem
+	for _, item := range m.TaskList.Items() {
+		if t, ok := item.(TaskItem); ok {
+			if t.Status == "in_progress" || t.Status == "reviewing" {
+				running = append(running, t)
+			}
+		}
+	}
+	return running
+}

@@ -139,6 +139,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		items := m.LoadTasks()
 		m.TaskList.SetItems(items)
 
+		// Layout might change
+		m.updateLayout()
+
 		// Re-arm the watcher
 		cmds = append(cmds, watchTasksFile(WatchConfig{
 			TasksFile: m.TasksFile,
@@ -148,9 +151,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case LogLineMsg:
 		// New log line received - append to the appropriate viewport
 		if msg.TaskID != "" && msg.Line != "" {
-			// Update Worker 1 viewport with the selected task's logs
-			if msg.TaskID == m.SelectedTaskID {
-				if v, ok := m.WorkerViews[1]; ok {
+			// Find if this task is currently displayed (is running)
+			running := m.GetRunningTasks()
+			var viewIdx int = -1
+
+			for i, t := range running {
+				if t.ID == msg.TaskID {
+					viewIdx = i + 1
+					break
+				}
+			}
+
+			// If displayed, update the viewport
+			if viewIdx != -1 {
+				if v, ok := m.WorkerViews[viewIdx]; ok {
 					currentContent := v.View()
 					// Avoid appending if it's the initial content load (contains existing content)
 					if strings.HasPrefix(msg.Line, "Waiting for logs") || strings.HasPrefix(msg.Line, "Log file empty") {
@@ -159,17 +173,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						v.SetContent(currentContent + msg.Line)
 					}
 					v.GotoBottom()
-					m.WorkerViews[1] = v
+					m.WorkerViews[viewIdx] = v
 				}
+			}
 
-				// Continue tailing
-				if m.TailerCtx != nil {
-					logPath := filepath.Join(m.LogDir, fmt.Sprintf("%s.log", msg.TaskID))
-					offset := m.LogOffsets[msg.TaskID]
-					offset += int64(len(msg.Line))
-					m.LogOffsets[msg.TaskID] = offset
-					cmds = append(cmds, continueTailing(msg.TaskID, logPath, m.TailerCtx, offset))
-				}
+			// Continue tailing regardless of visibility (so we don't drop the stream)
+			// Only tail if this is the SELECTED task or we are ensuring background tailing?
+			// Actually, startLogTailer is called on Selection.
+			// If we want to tail ALL running tasks, we need multiple contexts or a map of tailers.
+			// Current architecture has `TailerCtx` (singular).
+			// So we only tail the SELECTED task.
+			// If the selected task is running, `viewIdx` will be valid.
+			// If the selected task is NOT running, `viewIdx` is -1, but we successfully tail (just don't render).
+
+			if msg.TaskID == m.SelectedTaskID && m.TailerCtx != nil {
+				logPath := filepath.Join(m.LogDir, fmt.Sprintf("%s.log", msg.TaskID))
+				offset := m.LogOffsets[msg.TaskID]
+				offset += int64(len(msg.Line))
+				m.LogOffsets[msg.TaskID] = offset
+				cmds = append(cmds, continueTailing(msg.TaskID, logPath, m.TailerCtx, offset))
 			}
 
 			// Also handle orchestrator logs
@@ -208,6 +230,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		items := m.LoadTasks()
 		m.TaskList.SetItems(items)
 
+		// Update layout based on new state
+		m.updateLayout()
+
 		// Update Orchestrator logs
 		orchLogs := m.ReadLogs("orchestrator")
 		if orchLogs != m.OrchView.View() {
@@ -215,30 +240,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.OrchView.GotoBottom()
 		}
 
-		// Update worker views from assigned task logs
-		for i := 1; i <= 4; i++ {
-			taskID := ""
-			// Find task assigned to this worker
-			for _, item := range items {
-				ti := item.(TaskItem)
-				if ti.Status == "in_progress" {
-					// Extract worker ID if we had it
-				}
+		// Update worker views from RUNNING tasks (Dynamic Grid)
+		running := m.GetRunningTasks()
+		for i, t := range running {
+			if i >= 4 {
+				break
 			}
+			idx := i + 1
 
-			// Simple auto-fill: show selected task in Worker 1
-			if i == 1 && m.SelectedTaskID != "" {
-				taskID = m.SelectedTaskID
-			}
+			logs := m.ReadLogs(t.ID)
+			view := m.WorkerViews[idx]
 
-			if taskID != "" {
-				logs := m.ReadLogs(taskID)
-				view := m.WorkerViews[i]
-				if logs != view.View() {
-					view.SetContent(logs)
-					view.GotoBottom()
-					m.WorkerViews[i] = view
-				}
+			// Compare content length to avoid flicker or heavy updates
+			if logs != view.View() {
+				view.SetContent(logs)
+				view.GotoBottom()
+				m.WorkerViews[idx] = view
 			}
 		}
 
@@ -315,49 +332,63 @@ func (m *Model) updateLayout() {
 		return
 	}
 
+	runningTasks := m.GetRunningTasks()
+	activeCount := len(runningTasks)
+
 	headerHeight := 1
 	footerHeight := 3
-	panesHeight := m.Height - headerHeight - footerHeight
+	contentHeight := m.Height - headerHeight - footerHeight
 
-	// Main Area (Orchestrator) - 60% Width, 70% Height
-	orchWidth := int(float64(m.Width) * 0.6)
-	orchHeight := int(float64(panesHeight) * 0.7)
-
-	m.OrchView.Width = orchWidth - 2
-	m.OrchView.Height = orchHeight - 2
-
-	// Side Column (Worker 1 & 2) - 40% Width
-	sideWidth := m.Width - orchWidth
-	sideHeight := orchHeight / 2
-
-	if v, ok := m.WorkerViews[1]; ok {
-		v.Width = sideWidth - 2
-		v.Height = sideHeight - 2
-		m.WorkerViews[1] = v
-	}
-	if v, ok := m.WorkerViews[2]; ok {
-		v.Width = sideWidth - 2
-		v.Height = sideHeight - 2
-		m.WorkerViews[2] = v
+	if activeCount == 0 {
+		// Idle / Chat Mode
+		m.TaskList.SetSize(m.Width-2, contentHeight)
+		return
 	}
 
-	// Bottom Row (Worker 3, 4, Tasks) - 30% Height
-	bottomHeight := panesHeight - orchHeight
-	thirdWidth := m.Width / 3
-
-	if v, ok := m.WorkerViews[3]; ok {
-		v.Width = thirdWidth - 2
-		v.Height = bottomHeight - 2
-		m.WorkerViews[3] = v
+	// Active Mode
+	sidebarWidth := int(float64(m.Width) * 0.25)
+	if sidebarWidth < 30 {
+		sidebarWidth = 30
 	}
-	if v, ok := m.WorkerViews[4]; ok {
-		v.Width = thirdWidth - 2
-		v.Height = bottomHeight - 2
-		m.WorkerViews[4] = v
-	}
+	mainWidth := m.Width - sidebarWidth
 
-	m.TaskList.SetSize(thirdWidth-2, bottomHeight-2)
-	m.Input.Width = m.Width - 4
+	// Update Sidebar
+	m.TaskList.SetSize(sidebarWidth-2, contentHeight)
+
+	// Distribute Main Area
+	// We need to update up to activeCount viewports
+	for i := 0; i < activeCount && i < 4; i++ {
+		vIdx := i + 1
+		view, ok := m.WorkerViews[vIdx]
+		if !ok {
+			continue
+		}
+
+		var w, h int
+
+		switch activeCount {
+		case 1:
+			w, h = mainWidth, contentHeight
+		case 2:
+			w, h = mainWidth, contentHeight/2 // Stacked Vertical
+		case 3:
+			if i == 0 {
+				w, h = mainWidth, contentHeight/2 // Top
+			} else {
+				w, h = mainWidth/2, contentHeight/2 // Bottom Split
+			}
+		case 4:
+			w, h = mainWidth/2, contentHeight/2 // 2x2 Grid
+		default:
+			// Fallback (cap at 4 for now in layout)
+			w, h = mainWidth/2, contentHeight/2
+		}
+
+		// Adjust for borders
+		view.Width = w - 2
+		view.Height = h - 2
+		m.WorkerViews[vIdx] = view
+	}
 }
 
 func containsPlan(s string) bool {
