@@ -2,7 +2,7 @@
 set -e
 
 # Configuration
-REPO_OWNER="tuanbt"
+REPO_OWNER="tuanpep"
 REPO_NAME="hive"
 BINARY_NAME="hive"
 INSTALL_DIR="/usr/local/bin"

@@ -20,20 +20,11 @@ HIVE is a powerful, multithreaded orchestration engine for autonomous AI agents.
 - **📓 Blackboard Pattern**: Decoupled coordination via a persistent JSON task registry.
 
 ## 📺 The Hacker Grid
-HIVE features a state-of-the-art Terminal UI providing real-time log streaming from every active worker in the swarm.
+> **"Be the Queen. Command the Swarm."**
 
-```text
-+-----------------------+-----------+
-|                       |  WORKER 1 |
-|     ORCHESTRATOR      | (BACKEND) |
-|      (THE BRAIN)      +-----------+
-|                       |  WORKER 2 |
-|                       | (FRONTEND)|
-+-----------+-----------+-----------+
-|  WORKER 3 |  WORKER 4 |   TASK    |
-|   (BA)    |   (QA)    |  REGISTRY |
-+-----------+-----------+-----------+
-```
+HIVE is a lightweight **Go-based Autonomous Agent Orchestrator** designed for developers who want to manage a swarm of AI agents from the terminal. It uses a **Blackboard Pattern** (`tasks.json`) for coordination and features a **"Hacker Grid" TUI** for real-time monitoring.
+
+---
 
 ## 🛠️ Installation
 
@@ -41,14 +32,14 @@ HIVE features a state-of-the-art Terminal UI providing real-time log streaming f
 Install the latest `hive` binary directly to your path (Linux/macOS):
 
 ```bash
-curl -sL https://raw.githubusercontent.com/tuanbt/hive/main/install.sh | bash
+curl -sL https://raw.githubusercontent.com/tuanpep/hive/main/install.sh | bash
 ```
 
 ### 📦 Manual Build
 If you prefer building from source:
 
 ```bash
-git clone https://github.com/tuanbt/hive.git
+git clone https://github.com/tuanpep/hive.git
 cd hive
 make build-all
 ```
