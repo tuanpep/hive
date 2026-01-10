@@ -4,24 +4,29 @@
         "run"
     ],
     "agent_mode": "episodic",
-    "num_workers": 4,
-    "response_timeout_seconds": 120,
-    "max_task_duration_seconds": 1800,
-    "max_review_cycles": 3,
-    "max_restart_attempts": 3,
-    "restart_cooldown_seconds": [
-        5,
-        15,
-        60
-    ],
+    "num_workers": 2,
+    "response_timeout_seconds": 60,
+    "max_task_duration_seconds": 300,
     "completion_marker": "### TASK_DONE ###",
-    "stop_tokens": [
-        "TASK_COMPLETED",
-        "### TASK_DONE ###"
-    ],
     "log_directory": "./logs",
     "log_level": "info",
-    "recover_in_progress_on_startup": true,
     "tasks_file": "tasks.json",
-    "work_directory": "."
+    "work_directory": "./workspace",
+    "git_integration": {
+        "enabled": true,
+        "base_branch": "main",
+        "remote": "origin",
+        "branch_prefix": "agent/feat-",
+        "create_pr": false
+    },
+    "instructions": {
+        "global_rules": [
+            "You are an autonomous coding agent.",
+            "When writing code, write the full file content to disk.",
+            "Always verify your code with tests."
+        ],
+        "role_instructions": {
+            "backend": "Use Go (Golang) for backend tasks. Create a go.mod if missing."
+        }
+    }
 }

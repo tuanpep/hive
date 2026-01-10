@@ -17,9 +17,8 @@ A multithreaded pool of workers. Each worker:
 - Reports results back to the Orchestrator via asynchronous channels.
 
 ### 3. Agent Driver (The Interface)
-A flexible abstraction layer that can drive various AI agents:
-- **Episodic Mode**: Executing one-shot commands (e.g., `opencode run`).
-- **Persistent Mode**: Interacting with a long-running REPL session.
+A flexible abstraction layer that drives AI agents in episodic mode:
+- **Episodic Mode**: Executing one-shot commands (e.g., `opencode run [message]`).
 
 ## Data Flow: The Blackboard Pattern
 

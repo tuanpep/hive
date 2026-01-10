@@ -67,7 +67,6 @@ func (w *Worker) Start(ctx context.Context) error {
 
 	// Wait for agent to initialize
 	time.Sleep(500 * time.Millisecond)
-	w.agent.DrainOutput(time.Second)
 
 	w.logger.Info("worker ready, waiting for tasks")
 
@@ -255,7 +254,6 @@ Please implement this now. When you are finished, output '%s'.`,
 
 	// Clear context for next task
 	w.agent.SendInput("/clear")
-	w.agent.DrainOutput(time.Second)
 
 	fullOutput := implOutput + "\n---\n" + reviewOutput
 	var newTasks []*task.Task

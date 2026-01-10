@@ -6,7 +6,7 @@ Thank you for your interest in improving HIVE! This project aims to simplify aut
 
 1. **Prerequisites**:
     - Go 1.21+
-    - An agent binary (e.g., `opencode` or similar) configured in your path.
+    - OpenCode CLI installed (`npm install -g @opencode/sdk`).
 
 2. **Clone & Build**:
     ```bash
@@ -23,10 +23,13 @@ Thank you for your interest in improving HIVE! This project aims to simplify aut
 
 ## Adding New Agent Drivers
 
-If you want to support a new AI model or local agent:
+If you want to support a new episodic AI agent:
 1. Review `internal/agent/driver.go`.
-2. Implement the interface handles the `episodic` or `persistent` communication logic.
-3. Update `config.json` to point to your new agent command.
+2. Implement the command execution interface following the `execute()` method pattern.
+3. Update `config.json` to set `agent_command` to your new agent binary.
+4. Ensure your agent outputs the completion marker or stop tokens.
+
+Note: HIVE currently supports episodic mode only (one-shot command execution).
 
 ## Coding Standards
 

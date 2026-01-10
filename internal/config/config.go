@@ -9,9 +9,9 @@ import (
 
 // Config represents the orchestrator configuration.
 type Config struct {
-	// AgentCommand is the command to start the Claude CLI.
+	// AgentCommand is the command to start OpenCode.
 	AgentCommand []string `json:"agent_command"`
-	// AgentMode is the mode in which the agent operates ("persistent" or "episodic").
+	// AgentMode is the mode in which the agent operates (currently only "episodic" supported).
 	AgentMode string `json:"agent_mode"`
 
 	// NumWorkers is the number of parallel workers to run.
@@ -80,8 +80,8 @@ type GitConfig struct {
 // DefaultConfig returns a Config with sensible defaults.
 func DefaultConfig() *Config {
 	return &Config{
-		AgentCommand:               []string{"claude"},
-		AgentMode:                  "persistent",
+		AgentCommand:               []string{"opencode", "run"},
+		AgentMode:                  "episodic",
 		NumWorkers:                 1,
 		ResponseTimeoutSeconds:     60,
 		MaxTaskDurationSeconds:     1800, // 30 minutes
