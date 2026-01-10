@@ -529,14 +529,6 @@ func (m *Model) startLogTailer(taskID string) tea.Cmd {
 	}
 }
 
-func (m *Model) updateFocus() {
-	if m.FocusArea == FocusInput {
-		m.Input.Focus()
-	} else {
-		m.Input.Blur()
-	}
-}
-
 func (m *Model) updateLayout() {
 	if m.Width == 0 || m.Height == 0 {
 		return
@@ -615,10 +607,6 @@ func (m *Model) updateLayout() {
 
 		m.WorkerViews[vIdx] = view
 	}
-}
-
-func containsPlan(s string) bool {
-	return strings.Contains(s, "### PLAN_START ###")
 }
 
 func ModeModeInsert() ViewMode { return ModeInsert }

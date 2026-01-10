@@ -28,3 +28,7 @@ cat: '''=== SYSTEM INSTRUCTIONS ==='$'\n\n''=== TASK ==='$'\n''Task: Test Task'$
 
 cat: '''Review the implementation:'$'\n''1. Run any tests if possible'$'\n''2. Fix any syntax errors'$'\n''3. If everything is correct, say '\''### TASK_DONE ###'\'''$'\n': No such file or directory
 
+cat: '''=== SYSTEM INSTRUCTIONS ==='$'\n\n''=== TASK ==='$'\n''Task: Test Task'$'\n''Description: Do something'$'\n''Please implement this now. When you are finished, output '\''### TASK_DONE ###'\''.'$'\n': No such file or directory
+
+cat: '''Review the implementation:'$'\n''1. Run any tests if possible'$'\n''2. Fix any syntax errors'$'\n''3. If everything is correct, say '\''### TASK_DONE ###'\'''$'\n': No such file or directory
+

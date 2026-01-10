@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"bufio"
 	"context"
 	"io"
 	"os"
@@ -32,55 +31,6 @@ func NewLogTailer(taskID, path string) *LogTailer {
 // Stop stops the log tailer.
 func (t *LogTailer) Stop() {
 	t.cancel()
-}
-
-// tailLogFile returns a tea.Cmd that tails a log file and emits LogLineMsg for each new line.
-// This implements a simple "tail -f" behavior.
-func tailLogFile(taskID, path string, ctx context.Context) tea.Cmd {
-	return func() tea.Msg {
-		// Open the file
-		file, err := os.Open(path)
-		if err != nil {
-			// File doesn't exist yet, wait and retry
-			if os.IsNotExist(err) {
-				time.Sleep(100 * time.Millisecond)
-				return LogLineMsg{TaskID: taskID, Line: ""}
-			}
-			return TailerStoppedMsg{TaskID: taskID, Error: err}
-		}
-		defer file.Close()
-
-		// Seek to end of file for new content only
-		_, err = file.Seek(0, io.SeekEnd)
-		if err != nil {
-			return TailerStoppedMsg{TaskID: taskID, Error: err}
-		}
-
-		reader := bufio.NewReader(file)
-
-		// Poll for new content
-		for {
-			select {
-			case <-ctx.Done():
-				return TailerStoppedMsg{TaskID: taskID, Error: nil}
-			default:
-				line, err := reader.ReadString('\n')
-				if err != nil {
-					if err == io.EOF {
-						// No new content, wait a bit
-						time.Sleep(50 * time.Millisecond)
-						continue
-					}
-					return TailerStoppedMsg{TaskID: taskID, Error: err}
-				}
-
-				// Return the line (this will re-invoke the command for next line)
-				if line != "" {
-					return LogLineMsg{TaskID: taskID, Line: line}
-				}
-			}
-		}
-	}
 }
 
 // startTailing returns a tea.Cmd that starts tailing a log file.

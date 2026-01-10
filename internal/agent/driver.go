@@ -21,8 +21,7 @@ import (
 // It supports episodic (one-shot command execution) mode.
 type Driver struct {
 	// Episodic mode state
-	inputBuf  strings.Builder
-	sessionID string
+	inputBuf strings.Builder
 
 	config  *config.Config
 	logger  *slog.Logger
