@@ -2,9 +2,20 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 )
+
+// ASCII Logo for Home Screen
+var asciiLogo = []string{
+	"██╗  ██╗██╗██╗   ██╗███████╗",
+	"██║  ██║██║██║   ██║██╔════╝",
+	"███████║██║██║   ██║█████╗  ",
+	"██╔══██║██║╚██╗ ██╔╝██╔══╝  ",
+	"██║  ██║██║ ╚████╔╝ ███████╗",
+	"╚═╝  ╚═╝╚═╝  ╚═══╝  ╚══════╝",
+}
 
 func (m Model) View() string {
 	if m.Width == 0 || !m.Ready {
@@ -13,84 +24,166 @@ func (m Model) View() string {
 
 	runningTasks := m.GetRunningTasks()
 	activeCount := len(runningTasks)
+	totalTasks := len(m.TaskList.Items())
 
-	// 1. Header is common
-	headerStr := fmt.Sprintf(" 🤖 HIVE-SWARM | TASKS: %d | RUNNING: %d | ID: %s | MODE: %s ",
-		len(m.TaskList.Items()), activeCount, m.SelectedTaskID, m.getModeString())
-	header := StyleHeader.Width(m.Width).Render(headerStr)
+	var content string
 
-	var mainContent string
-
-	// 2. Dynamic Layout Logic
-	if activeCount == 0 {
-		// === IDLE / CHAT MODE ===
-		// Full width Task List + Input
-		// We hide the orchestrator/worker views completely to unclutter
-		listFocusStyle := StylePaneBorder
-		if m.FocusArea == FocusList {
-			listFocusStyle = StylePaneBorderFocus
-		}
-
-		// List takes full remaining height
-		footerHeight := 3                         // input + help
-		listHeight := m.Height - 1 - footerHeight // header=1
-
-		taskView := listFocusStyle.Width(m.Width - 2).Height(listHeight).Render(m.TaskList.View())
-		mainContent = taskView
-
+	if totalTasks == 0 {
+		content = m.viewHome()
 	} else {
-		// === ACTIVE SWARM MODE ===
-		// Left: Task List (Sidebar)
-		// Right: Dynamic Worker Grid
+		content = m.viewDashboard(activeCount, runningTasks)
+	}
 
-		// Layout constants
-		sidebarWidth := int(float64(m.Width) * 0.25)
-		if sidebarWidth < 30 {
-			sidebarWidth = 30
-		} // Min width
-		contentHeight := m.Height - 4 // header(1) + footer(3)
+	if m.ShowModal {
+		modal := StyleModal.Render(m.ModalContent)
+		return m.overlay(content, modal)
+	}
 
-		// Render Sidebar
-		listFocusStyle := StylePaneBorder
-		if m.FocusArea == FocusList {
-			listFocusStyle = StylePaneBorderFocus
+	return content
+}
+
+func (m Model) viewHome() string {
+	// Logo
+	logoBlock := lipgloss.JoinVertical(lipgloss.Center, asciiLogo...)
+	logoStyled := StyleLogo.Render(logoBlock)
+
+	// Helper text
+	helpText := StyleDimmed.Render("Type a task title to start. Press [?] for help. [q] to quit.")
+
+	// Input
+	// Ensure input view width matches our box if possible, or leave as is.
+	inputView := m.Input.View()
+
+	// Box the input to look centered and prominent
+	inputBox := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(ColorPrimary).
+		Padding(1, 2).
+		Width(60).
+		Render(inputView)
+
+	// Suggestions Overlay
+	suggestions := m.viewSuggestions()
+
+	// Center Layout: Logo -> Suggestions -> Space -> Input -> Space -> Help
+	verticalElements := []string{logoStyled, "\n"}
+	if suggestions != "" {
+		verticalElements = append(verticalElements, suggestions)
+	} else {
+		verticalElements = append(verticalElements, "\n")
+	}
+	verticalElements = append(verticalElements, inputBox, "\n", helpText)
+
+	centerContent := lipgloss.JoinVertical(lipgloss.Center, verticalElements...)
+
+	// Footer
+	footer := m.viewStatusFooter()
+
+	// Calculate main content height
+	contentHeight := m.Height - lipgloss.Height(footer)
+	if contentHeight < 0 {
+		contentHeight = 0
+	}
+
+	// Place center content in the middle of the available space
+	centerPlaced := lipgloss.Place(m.Width, contentHeight,
+		lipgloss.Center, lipgloss.Center,
+		centerContent,
+		lipgloss.WithWhitespaceChars(" "),
+		lipgloss.WithWhitespaceForeground(ColorSecondary),
+	)
+
+	return lipgloss.JoinVertical(lipgloss.Left, centerPlaced, footer)
+}
+
+func (m Model) viewDashboard(activeCount int, runningTasks []TaskItem) string {
+	// Layout: Sidebar (Left) | Grid (Right)
+	// Footer (Bottom)
+
+	// Dimensions
+	footer := m.viewStatusFooter()
+	footerHeight := lipgloss.Height(footer)
+	contentHeight := m.Height - footerHeight
+	if contentHeight < 0 {
+		contentHeight = 0
+	}
+
+	// Sidebar
+	sidebarWidth := int(float64(m.Width) * 0.25)
+	if sidebarWidth < 30 {
+		sidebarWidth = 30 // Minimum width
+	}
+
+	// Ensure sidebar doesn't take too much of small screens
+	if sidebarWidth > m.Width/2 {
+		sidebarWidth = m.Width / 2
+	}
+
+	// Sidebar Focus Styling
+	listFocusStyle := StylePaneBorder
+	if m.FocusArea == FocusList {
+		listFocusStyle = StylePaneBorderFocus
+	}
+
+	// Sidebar Header
+	sidebarHeader := StyleGridLabel.Width(sidebarWidth - 4).Align(lipgloss.Center).Render("TASK QUEUE")
+
+	taskList := listFocusStyle.Width(sidebarWidth - 2).Height(contentHeight - 2).Render(
+		lipgloss.JoinVertical(lipgloss.Left,
+			sidebarHeader,
+			m.TaskList.View(),
+		),
+	)
+
+	// Main Grid
+	mainWidth := m.Width - sidebarWidth
+	if mainWidth < 0 {
+		mainWidth = 0
+	}
+
+	var workerArea string
+	views := make([]string, 0)
+
+	for i, t := range runningTasks {
+		if i >= 4 {
+			break
 		}
-		sidebar := listFocusStyle.Width(sidebarWidth - 2).Height(contentHeight).Render(
+		vIdx := i + 1
+		vModel := m.WorkerViews[vIdx]
+
+		// Task Label
+		label := StyleGridLabel.Render(fmt.Sprintf(" WORKER %d: %s ", vIdx, t.ID))
+
+		// Border Styling
+		border := StylePaneBorder
+		if t.ID == m.SelectedTaskID {
+			border = StylePaneBorderFocus
+		}
+
+		// Render Pane
+		// Note: vModel.Width/Height are managed by updateLayout in update.go
+		// We trust those values are approximately correct.
+		pane := border.Width(vModel.Width).Height(vModel.Height).Render(
+			lipgloss.JoinVertical(lipgloss.Left, label, vModel.View()),
+		)
+		views = append(views, pane)
+	}
+
+	// Grid Composition
+	if len(views) == 0 {
+		// No active workers, show System Logs (Orchestrator) to explain why
+		// e.g. "Git working directory not clean"
+
+		orchTitle := StyleGridLabel.Render(" SYSTEM LOGS ")
+		orchPane := StylePaneBorder.Width(mainWidth).Height(contentHeight).Render(
 			lipgloss.JoinVertical(lipgloss.Left,
-				StyleGridLabel.Background(ColorBlue).Render(" TASK QUEUE "),
-				m.TaskList.View(),
+				orchTitle,
+				m.OrchView.View(),
 			),
 		)
 
-		// Render Main Grid based on active count
-		var workerArea string
-
-		// Map active tasks to views (up to 4 supported for now)
-		views := make([]string, 0)
-		for i, t := range runningTasks {
-			if i >= 4 {
-				break
-			}
-
-			// Determine which view model to use (1-4)
-			vIdx := i + 1
-			vModel := m.WorkerViews[vIdx]
-
-			// Render individual worker pane
-			label := StyleGridLabel.Render(fmt.Sprintf(" WORKER-%d [%s] ", vIdx, t.ID))
-			border := StylePaneBorder
-			// Highlight if this task is selected (simple logic)
-			if t.ID == m.SelectedTaskID {
-				border = StylePaneBorderFocus
-			}
-
-			pane := border.Width(vModel.Width).Height(vModel.Height).Render(
-				lipgloss.JoinVertical(lipgloss.Left, label, vModel.View()),
-			)
-			views = append(views, pane)
-		}
-
-		// Grid Composition
+		workerArea = orchPane
+	} else {
 		switch len(views) {
 		case 1:
 			workerArea = views[0]
@@ -105,36 +198,55 @@ func (m Model) View() string {
 			bottom := lipgloss.JoinHorizontal(lipgloss.Top, views[2], views[3])
 			workerArea = lipgloss.JoinVertical(lipgloss.Left, top, bottom)
 		default:
-			// Fallback (shouldn't happen with break above)
-			workerArea = views[0]
+			// Fallback
+			workerArea = lipgloss.NewStyle().Width(mainWidth).Height(contentHeight).Render("")
 		}
-
-		mainContent = lipgloss.JoinHorizontal(lipgloss.Top, sidebar, workerArea)
 	}
 
-	// 3. Footer (Input Deck)
-	inputPrefix := StyleInputPrefix.Render(">_ ")
-	footer := lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.JoinHorizontal(lipgloss.Center, inputPrefix, m.Input.View()),
-		StyleDimmed.Render(" [i] Insert [ESC] Selection [j/k] Nav [q] Quit"),
-	)
+	mainContent := lipgloss.JoinHorizontal(lipgloss.Top, taskList, workerArea)
 
-	// Combine all
-	ui := lipgloss.JoinVertical(lipgloss.Left, header, mainContent, footer)
-
-	if m.ShowModal {
-		modal := StyleModal.Render(m.ModalContent)
-		return m.overlay(ui, modal)
-	}
-
-	return ui
+	return lipgloss.JoinVertical(lipgloss.Left, mainContent, footer)
 }
 
-func (m Model) getModeString() string {
-	if m.Mode == ModeInsert {
-		return "INSERT"
+func (m Model) viewStatusFooter() string {
+	// Bar: [ DIR ] [ STATUS ] [ VERSION ]
+	w := lipgloss.Width
+
+	dir := m.LogDir
+	// Shorten dir if too long
+	if len(dir) > 30 {
+		dir = "..." + dir[len(dir)-27:]
 	}
-	return "SELECTION"
+
+	status := " Idle "
+	count := len(m.GetRunningTasks())
+	styleStatus := StyleStatusPending
+
+	if count > 0 {
+		status = fmt.Sprintf(" Active: %d ", count)
+		styleStatus = StyleStatusActive
+	}
+
+	sDir := lipgloss.NewStyle().Background(ColorSecondary).Foreground(ColorFg).Padding(0, 1).Render(dir)
+	sStatus := lipgloss.NewStyle().Background(ColorBg).Foreground(styleStatus.GetForeground()).Padding(0, 1).Bold(true).Render(status)
+	sVersion := lipgloss.NewStyle().Background(ColorSecondary).Foreground(ColorFg).Padding(0, 1).Render("v0.2.1")
+
+	// Input Mode Indicator
+	sMode := lipgloss.NewStyle().Padding(0, 1).Render(m.getModeString())
+	if m.Mode == ModeInsert {
+		sMode = lipgloss.NewStyle().Background(ColorPrimary).Foreground(ColorBg).Padding(0, 1).Render(" INSERT ")
+	}
+
+	// Middle Spacer
+	leftWidth := w(sDir) + w(sStatus)
+	rightWidth := w(sMode) + w(sVersion)
+	gap := m.Width - leftWidth - rightWidth
+	if gap < 0 {
+		gap = 0
+	}
+	spacer := strings.Repeat(" ", gap)
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, sDir, sStatus, spacer, sMode, sVersion)
 }
 
 func (m Model) overlay(base, overlay string) string {
@@ -142,6 +254,54 @@ func (m Model) overlay(base, overlay string) string {
 		lipgloss.Center, lipgloss.Center,
 		overlay,
 		lipgloss.WithWhitespaceChars(" "),
-		lipgloss.WithWhitespaceForeground(ColorBorder),
+		lipgloss.WithWhitespaceForeground(ColorSecondary),
 	)
+}
+
+func (m Model) getModeString() string {
+	if m.Mode == ModeInsert {
+		return "INSERT"
+	}
+	return "NORMAL"
+}
+
+func (m Model) viewSuggestions() string {
+	if !m.SuggestionActive || len(m.Suggestions) == 0 {
+		return ""
+	}
+
+	// Limit to 5 items window around selection
+	limit := 5
+	start := 0
+	if m.SuggestionIdx > 2 {
+		start = m.SuggestionIdx - 2
+	}
+	end := start + limit
+	if end > len(m.Suggestions) {
+		end = len(m.Suggestions)
+		start = end - limit
+		if start < 0 {
+			start = 0
+		}
+	}
+
+	var items []string
+	for i := start; i < end; i++ {
+		s := m.Suggestions[i]
+		// Truncate if too long logic could go here
+		rowStyle := lipgloss.NewStyle().Padding(0, 1).Width(58) // Box width 60 - 2 border
+		if i == m.SuggestionIdx {
+			rowStyle = rowStyle.Background(ColorPrimary).Foreground(ColorBg)
+		} else {
+			rowStyle = rowStyle.Foreground(ColorFg)
+		}
+		items = append(items, rowStyle.Render(s))
+	}
+
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		Width(60).
+		BorderForeground(ColorSecondary).
+		Background(ColorBg). // Ensure opaque
+		Render(lipgloss.JoinVertical(lipgloss.Left, items...))
 }

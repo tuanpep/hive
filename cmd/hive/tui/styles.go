@@ -3,15 +3,15 @@ package tui
 import "github.com/charmbracelet/lipgloss"
 
 var (
-	// Colors
-	ColorBg      = lipgloss.Color("#080808")
-	ColorFg      = lipgloss.Color("#D1D1D1")
-	ColorNeon    = lipgloss.Color("#00FF9C") // Cyber Green
-	ColorBlue    = lipgloss.Color("#00E5FF") // Neon Blue
-	ColorPink    = lipgloss.Color("#FF007A") // Neon Pink (Errors)
-	ColorBorder  = lipgloss.Color("#333333") // Dim Grey
-	ColorDimmed  = lipgloss.Color("#666666")
-	ColorSuccess = lipgloss.Color("#00B894")
+	// Colors - Opencode Theme
+	ColorBg      = lipgloss.Color("#0a0a0a") // Very dark gray
+	ColorFg      = lipgloss.Color("#ECEFF4") // Whiteish
+	ColorPrimary = lipgloss.Color("#61AFEF") // Cyan/Blue
+	ColorSecondary = lipgloss.Color("#5C6370") // Slate Gray
+	ColorSuccess = lipgloss.Color("#98C379") // Green
+	ColorError   = lipgloss.Color("#E06C75") // Red
+	ColorWarning = lipgloss.Color("#E5C07B") // Yellow
+	ColorDimmed  = lipgloss.Color("#4B5263")
 
 	// Styles
 	StyleShell = lipgloss.NewStyle().
@@ -19,59 +19,61 @@ var (
 			Foreground(ColorFg)
 
 	StyleHeader = lipgloss.NewStyle().
-			Background(ColorBorder).
-			Foreground(ColorNeon).
+			Foreground(ColorPrimary).
 			Bold(true).
 			Padding(0, 1)
 
 	StylePaneBorder = lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder()).
-			BorderForeground(ColorBorder)
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorSecondary)
 
 	StylePaneBorderFocus = lipgloss.NewStyle().
-				Border(lipgloss.NormalBorder()).
-				BorderForeground(ColorNeon)
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(ColorPrimary)
 
 	StyleTitle = lipgloss.NewStyle().
-			Foreground(ColorNeon).
+			Foreground(ColorPrimary).
 			Bold(true).
 			MarginLeft(1)
 
 	StyleTaskSelected = lipgloss.NewStyle().
 				Border(lipgloss.NormalBorder(), false, false, false, true).
-				BorderForeground(ColorNeon).
+				BorderForeground(ColorPrimary).
 				PaddingLeft(1).
-				Foreground(ColorNeon)
+				Foreground(ColorPrimary)
 
 	StyleTaskDimmed = lipgloss.NewStyle().
-			Foreground(ColorDimmed).
+			Foreground(ColorSecondary).
 			PaddingLeft(2)
 
 	StyleDimmed = lipgloss.NewStyle().
 			Foreground(ColorDimmed)
 
 	StyleInputPrefix = lipgloss.NewStyle().
-				Foreground(ColorBlue).
+				Foreground(ColorPrimary).
 				Bold(true)
 
-	StyleNeon = lipgloss.NewStyle().
-			Foreground(ColorNeon)
+	StylePrimary = lipgloss.NewStyle().
+			Foreground(ColorPrimary)
 
 	StyleStatusPending = lipgloss.NewStyle().Foreground(ColorDimmed)
-	StyleStatusActive  = lipgloss.NewStyle().Foreground(ColorNeon)
-	StyleStatusDone    = lipgloss.NewStyle().Foreground(ColorBlue)
-	StyleStatusFailed  = lipgloss.NewStyle().Foreground(ColorPink)
+	StyleStatusActive  = lipgloss.NewStyle().Foreground(ColorPrimary)
+	StyleStatusDone    = lipgloss.NewStyle().Foreground(ColorSuccess)
+	StyleStatusFailed  = lipgloss.NewStyle().Foreground(ColorError)
 
 	StyleModal = lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder()).
-			BorderForeground(ColorNeon).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorPrimary).
 			Padding(1, 4).
 			Background(ColorBg).
 			Align(lipgloss.Center)
 
 	StyleGridLabel = lipgloss.NewStyle().
 			Foreground(ColorBg).
-			Background(ColorNeon).
+			Background(ColorPrimary).
 			Bold(true).
 			Padding(0, 1)
+	
+	StyleLogo = lipgloss.NewStyle().
+			Foreground(ColorSecondary)
 )

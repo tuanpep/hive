@@ -29,6 +29,9 @@ type Config struct {
 	// MaxRestartAttempts is the maximum number of agent restart attempts.
 	MaxRestartAttempts int `json:"max_restart_attempts"`
 
+	// MaxTaskRetries is the maximum number of times to retry a failed task.
+	MaxTaskRetries int `json:"max_task_retries"`
+
 	// RestartCooldownSeconds is the exponential backoff for restarts.
 	RestartCooldownSeconds []int `json:"restart_cooldown_seconds"`
 
@@ -87,6 +90,7 @@ func DefaultConfig() *Config {
 		MaxTaskDurationSeconds:     1800, // 30 minutes
 		MaxReviewCycles:            3,
 		MaxRestartAttempts:         3,
+		MaxTaskRetries:             3,
 		RestartCooldownSeconds:     []int{5, 15, 60},
 		CompletionMarker:           "### TASK_DONE ###",
 		StopTokens:                 []string{"TASK_COMPLETED", "### TASK_DONE ###"},

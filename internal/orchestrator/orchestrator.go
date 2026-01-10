@@ -203,6 +203,20 @@ func (o *Orchestrator) processResult(result *worker.TaskResult) {
 		o.logger.Error("failed to update task status", "task_id", t.ID, "error", err)
 	}
 
+	// Autopilot: Auto-Retry Logic
+	if result.Status == task.StatusFailed || result.Error != nil {
+		if t.RetryCount < o.config.MaxTaskRetries {
+			newCount := t.IncrementRetry()
+			t.ResetForRetry()
+			if err := o.taskManager.UpdateTask(t); err != nil {
+				o.logger.Error("failed to reset task for retry", "task_id", t.ID, "error", err)
+			} else {
+				o.logger.Info("autopilot: retrying task", "task_id", t.ID, "attempt", newCount, "reason", reason)
+				return // Skip finding new tasks / git commit, just let it be picked up again
+			}
+		}
+	}
+
 	// Add new tasks if any (auto-planning)
 	if len(result.NewTasks) > 0 {
 		o.logger.Info("adding new tasks from agent plan", "count", len(result.NewTasks))

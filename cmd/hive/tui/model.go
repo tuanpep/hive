@@ -29,10 +29,11 @@ const (
 
 type Model struct {
 	// State sources
-	ConfigPath  string
-	TasksFile   string
-	LogDir      string
-	TaskManager *task.Manager
+	ConfigPath    string
+	TasksFile     string
+	LogDir        string
+	WorkDirectory string
+	TaskManager   *task.Manager
 
 	// Models
 	TaskList    list.Model
@@ -57,6 +58,7 @@ type Model struct {
 
 	// Grid state
 	WorkerTaskIDs map[int]string
+	TaskLastLog   map[string]string // Latest log line for each task
 
 	// Real-time tracking state
 	WatcherActive   bool               // Whether file watchers are running
@@ -64,6 +66,14 @@ type Model struct {
 	TailerCancel    context.CancelFunc // Cancel function for tailer
 	LogOffsets      map[string]int64   // Track file offsets for each task log
 	FallbackPolling bool               // True if watchers failed, using polling
+
+	// Suggestion (Mention/Command) State
+	SuggestionActive bool
+	SuggestionType   string // "@" or "/"
+	RawSuggestions   []string
+	Suggestions      []string
+	SuggestionIdx    int
+	SuggestionStart  int // Cursor index where @ started
 }
 
 // TaskItem implements list.Item
@@ -72,6 +82,7 @@ type TaskItem struct {
 	Title       string
 	Status      string
 	Description string
+	LastLog     string
 }
 
 func (i TaskItem) FilterValue() string       { return i.Title }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/tuanbt/hive/internal/task"
 )
 
 func (m Model) Init() tea.Cmd {
@@ -103,15 +104,217 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Input Handling (Insert Mode)
 		if m.Mode == ModeInsert {
-			if msg.String() == "enter" {
+			// SUGGESTION MODE HANDLING
+			if m.SuggestionActive {
+				switch msg.String() {
+				case "up":
+					m.SuggestionIdx--
+					if m.SuggestionIdx < 0 {
+						m.SuggestionIdx = len(m.Suggestions) - 1
+					}
+					return m, nil
+				case "down":
+					m.SuggestionIdx++
+					if m.SuggestionIdx >= len(m.Suggestions) {
+						m.SuggestionIdx = 0
+					}
+					return m, nil
+				case "enter":
+					if len(m.Suggestions) > 0 && m.SuggestionIdx >= 0 && m.SuggestionIdx < len(m.Suggestions) {
+						selected := m.Suggestions[m.SuggestionIdx]
+
+						if m.SuggestionType == "@" {
+							// @MENTION INSERTION
+							val := m.Input.Value()
+							if m.SuggestionStart <= len(val) {
+								before := val[:m.SuggestionStart]
+								newVal := before + selected + " "
+								m.Input.SetValue(newVal)
+								m.Input.SetCursor(len(newVal))
+							}
+						} else if m.SuggestionType == "/" {
+							// /COMMAND AUTOFILL
+							m.Input.SetValue(selected)
+							m.Input.SetCursor(len(selected))
+						}
+					}
+					m.SuggestionActive = false
+					return m, nil
+				case "esc":
+					m.SuggestionActive = false
+					return m, nil
+				}
+			}
+
+			// TRIGGER HANDLING: @MATCH
+			if msg.String() == "@" {
+				m.SuggestionActive = true
+				m.SuggestionType = "@"
+				m.SuggestionStart = len(m.Input.Value())
+				files, _ := getFiles(m.WorkDirectory)
+				m.RawSuggestions = files
+				m.Suggestions = files
+				m.SuggestionIdx = 0
+			}
+
+			// TRIGGER HANDLING: /COMMAND
+			// Only trigger if at start of line
+			if msg.String() == "/" && len(m.Input.Value()) == 0 {
+				m.SuggestionActive = true
+				m.SuggestionType = "/"
+				m.SuggestionStart = 0
+
+				cmds := getCommands()
+				var names []string
+				for _, c := range cmds {
+					names = append(names, c.Name)
+				}
+				m.RawSuggestions = names
+				m.Suggestions = names
+				m.SuggestionIdx = 0
+			}
+
+			// Capture key press
+			var cmd tea.Cmd
+			m.Input, cmd = m.Input.Update(msg)
+			cmds = append(cmds, cmd)
+
+			// UPDATE FILTER
+			if m.SuggestionActive {
+				val := m.Input.Value()
+
+				// Handle / command special case (start index 0)
+				// Handle @ mention (start index variable)
+
+				start := m.SuggestionStart
+				if m.SuggestionType == "/" {
+					start = 0 // Always 0 for commands
+				}
+
+				if start < len(val) {
+					// Check integrity of trigger
+					if m.SuggestionType == "@" {
+						// Ensure we haven't deleted the @
+						// Note: m.SuggestionStart is the index AFTER @ was typed.
+						// So val[start-1] should be @.
+						if start > 0 && val[start-1] != '@' {
+							m.SuggestionActive = false
+						}
+					}
+
+					if m.SuggestionType == "/" && (len(val) == 0 || val[0] != '/') {
+						m.SuggestionActive = false
+					}
+
+					if m.SuggestionActive {
+						filter := val[start:]
+						if strings.Contains(filter, " ") {
+							m.SuggestionActive = false
+						} else {
+							var filtered []string
+							for _, s := range m.RawSuggestions {
+								if strings.Contains(strings.ToLower(s), strings.ToLower(filter)) {
+									filtered = append(filtered, s)
+								}
+							}
+							m.Suggestions = filtered
+							m.SuggestionIdx = 0
+						}
+					}
+				} else {
+					// Cursor moved before start?
+					if start > len(val) {
+						m.SuggestionActive = false
+					}
+				}
+			}
+
+			// COMMAND SUBMISSION
+			if !m.SuggestionActive && msg.String() == "enter" {
 				val := m.Input.Value()
 				if val != "" {
-					if err := m.AddTask(val); err != nil {
+					// CHECK FOR RAW COMMANDS
+					if strings.HasPrefix(val, "/") {
+						parts := strings.Fields(val)
+						cmdName := parts[0]
+
+						switch cmdName {
+						case "/quit", "/exit":
+							return m, tea.Quit
+						case "/help", "/?":
+							m.ShowModal = true
+							m.Input.SetValue("")
+							return m, nil
+						case "/retry":
+							if m.SelectedTaskID != "" {
+								m.RetryTask(m.SelectedTaskID)
+							}
+							m.Input.SetValue("")
+							return m, nil
+						case "/nuke":
+							m.Nuke()
+							m.Input.SetValue("")
+							return m, nil
+						}
+					}
+
+					isPlanning := false
+					role := ""
+					// Smart Onboarding Detection
+					lowerVal := strings.ToLower(val)
+					if strings.HasPrefix(lowerVal, "i want") ||
+						strings.HasPrefix(lowerVal, "build") ||
+						strings.HasPrefix(lowerVal, "create") ||
+						strings.HasPrefix(lowerVal, "plan") ||
+						strings.Count(val, " ") > 3 {
+						isPlanning = true
+						role = "ba"
+					}
+
+					var err error
+					var newTaskItem TaskItem
+
+					if isPlanning && !strings.HasPrefix(val, "/") {
+						id := fmt.Sprintf("plan-%d", time.Now().Unix())
+						t := task.NewTask(id, fmt.Sprintf("Plan: %s", val), val)
+						t.Role = role
+						err = m.TaskManager.AddTask(t)
+
+						// Optimistic UI: Create pending item
+						newTaskItem = TaskItem{
+							ID:          id,
+							Title:       "⏳ " + t.Title,
+							Status:      "pending",
+							Description: "Pending | ID: " + id,
+							LastLog:     "Request submitted...",
+						}
+					} else if !strings.HasPrefix(val, "/") {
+						// Classic Add
+						id := fmt.Sprintf("task-%d", time.Now().UnixNano())
+						t := task.NewTask(id, val, val)
+						err = m.TaskManager.AddTask(t)
+
+						// Optimistic UI
+						newTaskItem = TaskItem{
+							ID:          id,
+							Title:       "⏳ " + t.Title,
+							Status:      "pending",
+							Description: "Pending | ID: " + id,
+							LastLog:     "Request submitted...",
+						}
+					}
+
+					if err != nil {
 						m.Err = err
+					} else if newTaskItem.ID != "" {
+						// Insert into list immediately to trigger view switch
+						m.TaskList.InsertItem(0, newTaskItem)
+						m.updateLayout()
 					}
 					m.Input.SetValue("")
 				}
 			}
+			return m, tea.Batch(cmds...)
 		}
 
 		// Check if task selection changed - start new tailer
@@ -198,6 +401,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.TaskID == "orchestrator" {
 				m.OrchView.SetContent(m.OrchView.View() + msg.Line)
 				m.OrchView.GotoBottom()
+			} else {
+				// Update Last Log (Thinking Context)
+				if m.TaskLastLog == nil {
+					m.TaskLastLog = make(map[string]string)
+				}
+				// Clean up the line a bit? Maybe too expensive. Just store it.
+				m.TaskLastLog[msg.TaskID] = strings.TrimSpace(msg.Line)
 			}
 		}
 
@@ -350,10 +560,22 @@ func (m *Model) updateLayout() {
 	if sidebarWidth < 30 {
 		sidebarWidth = 30
 	}
+	if sidebarWidth > m.Width/2 {
+		sidebarWidth = m.Width / 2
+	}
 	mainWidth := m.Width - sidebarWidth
 
 	// Update Sidebar
-	m.TaskList.SetSize(sidebarWidth-2, contentHeight)
+	// contentHeight includes border. TaskList inside needs to account for Header (1 line) + Border (2 lines).
+	// Actually TaskList handles its own internal sizing, but we render it inside a border.
+	// In view.go: listFocusStyle.Width(sidebarWidth - 2).Height(contentHeight - 2)
+	// Inside that: Header + TaskList.View()
+	// So TaskList height should be (contentHeight - 2) - 1 = contentHeight - 3
+	listH := contentHeight - 3
+	if listH < 0 {
+		listH = 0
+	}
+	m.TaskList.SetSize(sidebarWidth-4, listH) // -4 for padding/internal margins if any, safer
 
 	// Distribute Main Area
 	// We need to update up to activeCount viewports
@@ -384,9 +606,13 @@ func (m *Model) updateLayout() {
 			w, h = mainWidth/2, contentHeight/2
 		}
 
-		// Adjust for borders
-		view.Width = w - 2
-		view.Height = h - 2
+		// Adjust for borders (-2) and Label (-1)
+		view.Width = w - 4 // giving a bit more breathing room for text wrapping
+		view.Height = h - 3
+		if view.Height < 0 {
+			view.Height = 0
+		}
+
 		m.WorkerViews[vIdx] = view
 	}
 }

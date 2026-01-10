@@ -21,12 +21,13 @@ import (
 	"github.com/tuanbt/hive/internal/task"
 )
 
-var version = "dev"
+var version = "v0.2.1"
 
 func main() {
 	configPath := flag.String("config", "config.json", "Path to config file")
 	showVersion := flag.Bool("version", false, "Show version and exit")
-
+	showHeadless := flag.Bool("headless", false, "Run in headless mode (orchestrator only)")
+	disableGit := flag.Bool("no-git", false, "Disable Git integration")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [flags] <command> [args]\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "\nFlags:\n")
@@ -55,6 +56,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Override Git config if flag is set
+	if *disableGit {
+		cfg.GitIntegration.Enabled = false
+	}
+
 	// Resolve paths
 	pwd, _ := os.Getwd()
 	if !filepath.IsAbs(cfg.TasksFile) {
@@ -70,6 +76,11 @@ func main() {
 		cmd = args[0]
 	}
 
+	// If headless flag is set, override command to "headless" if it was implicit "tui"
+	if *showHeadless {
+		cmd = "headless"
+	}
+
 	tm := task.NewManager(cfg.TasksFile)
 	if err := tm.EnsureFile(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error initializing tasks file: %v\n", err)
@@ -79,6 +90,8 @@ func main() {
 	switch cmd {
 	case "tui":
 		runTUI(cfg, tm)
+	case "headless":
+		runHeadless(cfg, tm)
 	case "list":
 		handleList(tm)
 	case "add":
@@ -315,11 +328,13 @@ func initialModel(cfg *config.Config, tm *task.Manager) tui.Model {
 		ConfigPath:    "config.json",
 		TasksFile:     tasksFile,
 		LogDir:        logDir,
+		WorkDirectory: cfg.WorkDirectory,
 		TaskManager:   tm,
 		TaskList:      l,
 		OrchView:      orchVp,
 		WorkerViews:   workerVps,
 		WorkerTaskIDs: make(map[int]string),
+		TaskLastLog:   make(map[string]string),
 		Input:         ti,
 		FocusArea:     tui.FocusList,
 	}
