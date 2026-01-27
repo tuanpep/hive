@@ -14,7 +14,7 @@ import (
 func (m *Model) LoadTasks() []list.Item {
 	tasks, err := m.TaskManager.LoadAll()
 	if err != nil {
-		return []list.Item{} // Return empty on error or log it via some debug channel?
+		return []list.Item{}
 	}
 
 	items := make([]list.Item, len(tasks))
@@ -43,7 +43,6 @@ func (m *Model) LoadTasks() []list.Item {
 			Title:       fmt.Sprintf("%s %s", statusIcon, t.Title),
 			Status:      string(t.Status),
 			Description: desc,
-			LastLog:     m.TaskLastLog[t.ID],
 		}
 	}
 	return items
@@ -85,6 +84,7 @@ func (m *Model) DeleteTask(taskID string) error {
 	return m.TaskManager.DeleteTask(taskID)
 }
 
+// RetryTask resets a failed task for retry
 func (m *Model) RetryTask(taskID string) error {
 	t, err := m.TaskManager.GetByID(taskID)
 	if err != nil {
@@ -94,6 +94,7 @@ func (m *Model) RetryTask(taskID string) error {
 	return m.TaskManager.UpdateTask(t)
 }
 
+// Nuke cancels all active tasks
 func (m *Model) Nuke() error {
 	tasks, err := m.TaskManager.LoadAll()
 	if err != nil {
@@ -101,10 +102,7 @@ func (m *Model) Nuke() error {
 	}
 	for _, t := range tasks {
 		if t.Status == task.StatusInProgress || t.Status == task.StatusPending || t.Status == task.StatusReviewing {
-			// Cancelling/Deleting active tasks
 			m.TaskManager.UpdateStatus(t.ID, task.StatusFailed, "Nuked by user")
-			// Or Delete?
-			// m.TaskManager.DeleteTask(t.ID)
 		}
 	}
 	return nil

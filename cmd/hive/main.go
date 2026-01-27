@@ -292,50 +292,30 @@ func runTUI(cfg *config.Config, tm *task.Manager) {
 }
 
 func initialModel(cfg *config.Config, tm *task.Manager) tui.Model {
-	// Task List (Compact Hacker Style)
+	// Task List
 	l := list.New([]list.Item{}, tui.TaskDelegate{}, 0, 0)
 	l.SetShowTitle(false)
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 	l.SetShowHelp(false)
 
-	// Grid Viewports
-	orchVp := viewport.New(0, 0)
-	workerVps := make(map[int]viewport.Model)
-	for i := 1; i <= 4; i++ {
-		workerVps[i] = viewport.New(0, 0)
-	}
+	// Log View
+	logView := viewport.New(0, 0)
 
 	// Input
 	ti := textinput.New()
 	ti.Placeholder = "Type task title..."
-	ti.Prompt = "" // Handled by View
+	ti.Prompt = ""
 	ti.Width = 80
 	ti.Blur() // Start in selection mode
 
-	pwd, _ := os.Getwd()
-	// Resolve relative paths - ALREADY DONE in main, but good to keep for safety if used elsewhere
-	tasksFile := cfg.TasksFile
-	if !filepath.IsAbs(tasksFile) {
-		tasksFile = filepath.Join(pwd, tasksFile)
-	}
-	logDir := cfg.LogDirectory
-	if !filepath.IsAbs(logDir) {
-		logDir = filepath.Join(pwd, logDir)
-	}
-
 	return tui.Model{
-		ConfigPath:    "config.json",
-		TasksFile:     tasksFile,
-		LogDir:        logDir,
+		TasksFile:     cfg.TasksFile,
+		LogDir:        cfg.LogDirectory,
 		WorkDirectory: cfg.WorkDirectory,
 		TaskManager:   tm,
 		TaskList:      l,
-		OrchView:      orchVp,
-		WorkerViews:   workerVps,
-		WorkerTaskIDs: make(map[int]string),
-		TaskLastLog:   make(map[string]string),
+		LogView:       logView,
 		Input:         ti,
-		FocusArea:     tui.FocusList,
 	}
 }

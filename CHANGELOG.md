@@ -39,6 +39,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [MIGRATION.md](MIGRATION.md) for detailed migration instructions from previous versions.
 
+## [0.2.1] - 2025-01-27
+
+### Added
+- **Optimistic UI**: Zero-latency feedback when creating tasks
+- **Hive Mind Sidebar**: Real-time visualization of agent "thought" logs
+- **Slash Commands**: `/quit`, `/help`, `/retry`, `/nuke` (Emergency Stop)
+- **Context Mentions**: Type `@` to mention/include files in task context
+- **Headless Mode**: Run orchestrator without UI using `./hive -headless`
+- **Git Flexibility**: Use `./hive -no-git` to bypass dirty workspace checks
+- **System Visibility**: Dashboard displays system logs when no workers are active
+
+### Fixed
+- Fixed TUI freeze when file watchers stopped
+- Fixed "Silent Failure" state by exposing system logs
+
 ## [Previous Versions]
 
-For versions before 2025-01-10, refer to git history.
+For versions before 0.2.1, refer to git history.
